@@ -1,3 +1,5 @@
+use std::io;
+use std::io::Read;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -9,6 +11,7 @@ struct SteamData {
 #[tokio::main]
 async fn main() {
     if !check_data_file_existence() {
+        pause();
         return;
     }
     let data = std::fs::read_to_string("data.json").expect("Reading file error! Aborting");
@@ -16,11 +19,15 @@ async fn main() {
     for file_id in data.file_ids {
         match subscribe_file(file_id, &data.web_apikey).await {
             Ok(_) => println!("Successfully subscribed file {}. Proceeding", file_id),
-            Err(e) =>
-                panic!("Error subscribing file {}, status code {}", file_id, e.to_string())
+            Err(e) => {
+                println!("Error subscribing file {}, status code {}", file_id, e.to_string());
+                pause()
+            }
         }
     }
-    println!("All provided file id subscribed successfully. Finishing")
+    println!("All provided file id subscribed successfully. Finishing");
+    pause();
+    return;
 }
 
 fn check_data_file_existence() -> bool {
@@ -56,4 +63,9 @@ async fn subscribe_file(file_id: i64, api_key: &String) -> Result<(), Box<dyn st
         println!("Request Steam API failed! Aborting");
         Err(status_code.as_str().into())
     };
+}
+
+fn pause() {
+    let mut stdin = io::stdin();
+    let _ = stdin.read(&mut [0u8]).unwrap();
 }
